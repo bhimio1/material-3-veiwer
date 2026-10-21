@@ -3,7 +3,7 @@
 //! thread.
 
 use crate::config::Wallpaper;
-use material_3_ui::sys::{cmd, paths};
+use material_3_ui::sys::{clipboard, cmd, paths};
 use std::path::{Path, PathBuf};
 
 /// end4-pC's (or illogical-impulse's) wallpaper script, if installed.
@@ -77,7 +77,7 @@ pub fn set_wallpaper(path: &Path, choice: Wallpaper) -> Result<String, String> {
 /// Put an image on the clipboard as PNG.
 pub fn copy_image(png: &[u8]) -> Result<(), String> {
     if std::env::var_os("WAYLAND_DISPLAY").is_some() && cmd::exists("wl-copy") {
-        spawn_with_stdin("wl-copy", &["--type", "image/png"], png)
+        clipboard::copy_bytes(png, "image/png")
     } else if cmd::exists("xclip") {
         spawn_with_stdin(
             "xclip",
@@ -89,8 +89,8 @@ pub fn copy_image(png: &[u8]) -> Result<(), String> {
     }
 }
 
-/// wl-copy and xclip stay running to serve the clipboard, so don't wait
-/// for them to exit.
+/// xclip stays running to serve the clipboard, so don't wait for it to
+/// exit.
 fn spawn_with_stdin(program: &str, args: &[&str], input: &[u8]) -> Result<(), String> {
     use std::io::Write;
     use std::process::{Command, Stdio};

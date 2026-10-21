@@ -1,0 +1,39 @@
+[package]
+name = "material_3_viewer"
+version = "0.1.0"
+edition = "2021"
+description = "A Material 3 image and video viewer with non-destructive edits, built with egui"
+license = "MIT"
+repository = "https://github.com/bhimio1/material-3-veiwer"
+
+[[bin]]
+name = "m3-viewer"
+path = "src/main.rs"
+
+[features]
+default = []
+# Camera RAW files (CR2, NEF, ARW, DNG, …) through imagepipe.
+raw = ["dep:imagepipe"]
+
+[dependencies]
+material-3-ui = { git = "https://github.com/bhimio1/material-3-ui", rev = "d1c430aa7feebf86d027f6dce1566b6b9ba4dce0" }
+eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
+egui = "0.37"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "ico", "tiff", "tga", "pnm", "qoi", "hdr", "rayon"] }
+resvg = "0.45"
+kamadak-exif = "0.6"
+imagepipe = { version = "0.5", optional = true }
+libloading = "0.8"
+rfd = "0.15"
+trash = "5"
+serde = { version = "1", features = ["derive"] }
+toml = "0.9"
+flume = "0.11"
+anyhow = "1"
+chrono = "0.4"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+lto = "thin"

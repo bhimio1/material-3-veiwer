@@ -288,48 +288,30 @@ pub fn adjust(img: &mut RgbaImage, brightness: f32, contrast: f32, saturation: f
     }
 }
 
-/// Write `image` to `path` in the format its extension names, through a
-/// temporary file so a failed save never leaves a half-written picture.
+/// Write `image` to `path` in the format its extension names. Saving is
+/// material-3-ui's `fs::save`: atomic when that keeps the file's identity,
+/// so a failed save never leaves a half-written picture.
 pub fn save(image: &RgbaImage, path: &Path) -> Result<()> {
     let format = image::ImageFormat::from_path(path)
         .map_err(|_| anyhow!("unknown image format for {}", path.display()))?;
-    let dir = path
-        .parent()
-        .filter(|d| !d.as_os_str().is_empty())
-        .unwrap_or(Path::new("."));
-    let name = path.file_name().ok_or_else(|| anyhow!("no file name"))?;
-    let tmp = dir.join(format!(".{}.m3-viewer-tmp", name.to_string_lossy()));
-    let result = (|| -> Result<()> {
-        let mut out = std::io::BufWriter::new(std::fs::File::create(&tmp)?);
-        match format {
-            image::ImageFormat::Jpeg => {
-                let rgb = DynamicImage::ImageRgba8(image.clone()).to_rgb8();
-                image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, 92)
-                    .encode_image(&rgb)?;
-            }
-            image::ImageFormat::WebP => {
-                image::codecs::webp::WebPEncoder::new_lossless(&mut out).encode(
-                    image.as_raw(),
-                    image.width(),
-                    image.height(),
-                    image::ExtendedColorType::Rgba8,
-                )?;
-            }
-            _ => image.write_to(&mut out, format)?,
+    let mut out = std::io::Cursor::new(Vec::new());
+    match format {
+        image::ImageFormat::Jpeg => {
+            let rgb = DynamicImage::ImageRgba8(image.clone()).to_rgb8();
+            image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, 92).encode_image(&rgb)?;
         }
-        std::io::Write::flush(&mut out)?;
-        Ok(())
-    })();
-    match result {
-        Ok(()) => {
-            std::fs::rename(&tmp, path)?;
-            Ok(())
+        image::ImageFormat::WebP => {
+            image::codecs::webp::WebPEncoder::new_lossless(&mut out).encode(
+                image.as_raw(),
+                image.width(),
+                image.height(),
+                image::ExtendedColorType::Rgba8,
+            )?;
         }
-        Err(e) => {
-            let _ = std::fs::remove_file(&tmp);
-            Err(e)
-        }
+        _ => image.write_to(&mut out, format)?,
     }
+    material_3_ui::fs::save(path, out.get_ref())?;
+    Ok(())
 }
 
 /// "photo.jpg" → "photo (edited).jpg", "photo (edited 2).jpg", … whichever
@@ -494,6 +476,6 @@ mod tests {
             .unwrap()
             .file_name()
             .to_string_lossy()
-            .ends_with("tmp")));
+            .starts_with('.')));
     }
 }
